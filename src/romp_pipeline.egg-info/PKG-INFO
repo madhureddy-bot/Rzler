@@ -1,0 +1,407 @@
+Metadata-Version: 2.4
+Name: romp-pipeline
+Version: 1.0.0
+Summary: Body measurement pipeline using ROMP and SMPL models
+Author: ROMP Pipeline Team
+License: MIT
+Project-URL: Homepage, https://github.com/yourusername/romp-pipeline
+Project-URL: Documentation, https://github.com/yourusername/romp-pipeline#readme
+Project-URL: Repository, https://github.com/yourusername/romp-pipeline
+Project-URL: Issues, https://github.com/yourusername/romp-pipeline/issues
+Keywords: romp,smpl,body-measurement,3d-reconstruction,computer-vision
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Scientific/Engineering :: Image Recognition
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: numpy<2.0.0,>=1.19.0
+Requires-Dist: torch>=1.10.0
+Requires-Dist: trimesh>=3.9.0
+Requires-Dist: matplotlib>=3.3.0
+Requires-Dist: plotly>=5.0.0
+Requires-Dist: smplx>=0.1.28
+Requires-Dist: simple-romp>=1.0.0
+Requires-Dist: opencv-python>=4.5.0
+Requires-Dist: pillow>=8.0.0
+Requires-Dist: scipy>=1.5.0
+Requires-Dist: tqdm>=4.50.0
+Requires-Dist: requests>=2.25.0
+Requires-Dist: fastapi>=0.104.0
+Requires-Dist: uvicorn>=0.24.0
+Requires-Dist: python-multipart>=0.0.6
+Requires-Dist: chumpy
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: black>=22.0.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"
+Provides-Extra: docs
+Requires-Dist: sphinx>=4.0.0; extra == "docs"
+Requires-Dist: sphinx-rtd-theme>=1.0.0; extra == "docs"
+Requires-Dist: mkdocs>=1.4.0; extra == "docs"
+Requires-Dist: mkdocs-material>=9.0.0; extra == "docs"
+Provides-Extra: viz
+Requires-Dist: kaleido>=0.2.0; extra == "viz"
+
+# ROMP Pipeline
+
+**Body Measurement Pipeline using ROMP and SMPL Models**
+
+Extract detailed anthropometric measurements from images using ROMP (Regression of Multiple People) and SMPL body models.
+
+---
+
+## ✨ Features
+
+- 🎯 **ROMP Integration** - Automatic 3D human pose estimation
+- 📏 **Body Measurements** - Comprehensive anthropometric measurements
+- 🔄 **Height Normalization** - Normalize measurements to target height
+- 🌐 **REST API** - FastAPI-based web service
+- 💻 **CLI Tool** - Command-line interface for batch processing
+- 📊 **3D Visualization** - Interactive measurement visualization
+- 📦 **Easy Installation** - Simple `pip install` setup
+
+---
+
+## 📋 Requirements
+
+- Python 3.8+
+- PyTorch 1.10+
+- CUDA (optional, for GPU acceleration)
+
+---
+
+## 🚀 Quick Start
+
+### Installation
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/yourusername/romp-pipeline.git
+cd romp-pipeline
+
+# 2. Create virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Linux/Mac
+# or
+venv\Scripts\activate  # On Windows
+
+# 3. Install build dependencies (Critical step!)
+pip install numpy Cython wheel setuptools
+
+# 4. Install PyTorch and torchvision
+pip install torch torchvision
+
+# 5. Install smplx
+pip install smplx
+
+# 6. Install the package
+pip install -e .
+```
+
+**That's it!** The package is now installed and ready to use.
+
+### Download SMPL Models
+
+```bash
+# Download and prepare SMPL models
+romp.prepare_smpl
+```
+
+Follow the instructions to download SMPL models from the [official website](https://smpl.is.tue.mpg.de/).
+
+---
+
+## 💡 Usage
+
+### CLI (Command Line)
+
+```bash
+# Basic usage
+romp-pipeline -i examples/sample_images/person.jpg -o outputs
+
+# With height normalization
+romp-pipeline -i image.jpg -o outputs --height 176
+
+# With 3D visualization
+romp-pipeline -i image.jpg -o outputs --height 176 --visualize
+
+# Show help
+romp-pipeline --help
+```
+
+### API (REST Service)
+
+**Start the server:**
+
+```bash
+# Start API server
+romp-api
+
+# Or with uvicorn directly
+uvicorn romp_pipeline.api.main:app --host 0.0.0.0 --port 8000
+```
+
+**Make requests:**
+
+```bash
+# Upload file
+curl -F "image=@person.jpg" \
+     -F "target_height_cm=176" \
+     http://localhost:8000/measure
+
+# Use image URL
+curl -H "Content-Type: application/json" \
+     -d '{"image_url":"https://example.com/person.jpg","target_height_cm":176}' \
+     http://localhost:8000/measure
+
+# Health check
+curl http://localhost:8000/health
+```
+
+**API Documentation:**
+
+Visit `http://localhost:8000/` for interactive API documentation.
+
+### Python Module
+
+```python
+from romp_pipeline import MeasureBody
+import numpy as np
+import torch
+
+# Load ROMP output
+data = np.load('outputs/person.npz', allow_pickle=True)
+verts = torch.from_numpy(data['results'][()]['verts'][0]).float()
+
+# Create measurer
+measurer = MeasureBody('smpl')
+measurer.from_verts(verts=verts)
+
+# Measure
+measurer.measure(measurer.all_possible_measurements)
+measurements = measurer.measurements
+
+# Height normalize
+measurer.height_normalize_measurements(target_height_cm=176)
+normalized = measurer.height_normalized_measurements
+
+print(normalized)
+```
+
+---
+
+## 📁 Project Structure
+
+```
+romp_pipeline/
+├── src/
+│   └── romp_pipeline/           # Main package
+│       ├── api/                 # FastAPI application
+│       ├── cli/                 # Command-line interface
+│       ├── core/                # Core measurement logic
+│       └── config/              # Configuration
+├── tests/                       # Test suite
+├── docs/                        # Documentation
+├── examples/                    # Usage examples
+├── data/                        # SMPL models and data
+├── pyproject.toml               # Project configuration
+├── README.md                    # This file
+└── .gitignore                   # Git ignore rules
+```
+
+---
+
+## 📊 Available Measurements
+
+### Circumferences
+- Chest (full, horizontal, vertical)
+- Waist
+- Hip
+- Biceps
+- Forearms
+- Thighs
+- Calves
+
+### Lengths & Widths
+- Height
+- Shoulder width
+- Arm length
+- Leg length
+- Torso length
+- Inseam
+
+### Additional
+- Head circumference
+- Neck circumference
+- Wrist circumference
+- Ankle circumference
+
+*See `src/romp_pipeline/core/measurement_definitions.py` for complete list*
+
+---
+
+## 🔧 Development
+
+### Setup Development Environment
+
+```bash
+# Install with development dependencies
+pip install -e ".[dev]"
+
+# Install pre-commit hooks
+pre-commit install
+```
+
+### Run Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=romp_pipeline --cov-report=html
+
+# Run specific test
+pytest tests/test_measurements.py
+```
+
+### Code Quality
+
+```bash
+# Format code
+black src/ tests/
+
+# Lint code
+ruff check src/ tests/
+
+# Type checking
+mypy src/
+```
+
+---
+
+## 📖 Documentation
+
+For more detailed documentation, see:
+
+- [Installation Guide](docs/installation.md)
+- [API Usage](docs/api_usage.md)
+- [CLI Usage](docs/cli_usage.md)
+- [Examples](examples/)
+
+---
+
+## 🐛 Troubleshooting
+
+### ROMP not found
+
+```bash
+pip install --upgrade simple-romp --no-cache-dir
+```
+
+### SMPL models not found
+
+```bash
+romp.prepare_smpl
+```
+
+Make sure models are in `data/smpl_models/` directory.
+
+### GPU out of memory
+
+- Use smaller images
+- Process on CPU
+- Reduce batch size
+
+### Import errors
+
+Make sure you installed the package:
+
+```bash
+pip install -e .
+```
+
+---
+
+## 📄 API Response Format
+
+```json
+{
+  "measurements": {
+    "chest_circumference": 96.12,
+    "waist_circumference": 82.77,
+    "hip_circumference": 96.68,
+    "biceps_circumference": 27.17,
+    "thigh_circumference": 48.79,
+    "calf_circumference": 35.08,
+    ...
+  }
+}
+```
+
+All measurements are in **centimeters (cm)** and normalized to the specified target height.
+
+---
+
+## 🙏 Acknowledgments
+
+This project uses:
+
+- **ROMP** - [Monocular, One-stage, Regression of Multiple 3D People](https://github.com/Arthur151/ROMP)
+- **SMPL** - [A Skinned Multi-Person Linear Model](https://smpl.is.tue.mpg.de/)
+
+### Citation
+
+If you use this pipeline in your research, please cite:
+
+```bibtex
+@inproceedings{ROMP,
+  title={Monocular, One-stage, Regression of Multiple 3D People},
+  author={Sun, Yu and Bao, Qian and Liu, Wu and Fu, Yili and Black, Michael J. and Mei, Tao},
+  booktitle={ICCV},
+  year={2021}
+}
+```
+
+---
+
+## 📜 License
+
+Please refer to the respective licenses:
+- ROMP: [License](https://github.com/Arthur151/ROMP)
+- SMPL: [License](https://smpl.is.tue.mpg.de/modellicense.html)
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## 📞 Support
+
+For issues and questions:
+
+- Open an [Issue](https://github.com/yourusername/romp-pipeline/issues)
+- Check existing [Documentation](docs/)
+
+---
+
+**Made with ❤️ for computer vision and body measurement**
