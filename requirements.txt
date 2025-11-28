@@ -1,1 +1,16 @@
 
+# Runtime dependencies for Railpack / pip install
+numpy>=1.19.0,<2.0.0
+torch>=1.10.0
+trimesh>=3.9.0
+smplx>=0.1.28
+simple-romp>=1.0.0
+opencv-python>=4.5.0
+pillow>=8.0.0
+scipy>=1.5.0
+tqdm>=4.50.0
+requests>=2.25.0
+fastapi>=0.104.0
+uvicorn>=0.24.0
+python-multipart>=0.0.6
+chumpy
