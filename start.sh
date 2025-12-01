@@ -1,21 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Railpack calls this script to boot the FastAPI app.
+# Host/port (Railway will inject PORT)
 HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-8000}"
 
-# Ensure the src package path is importable without pip-installing the project
-export PYTHONPATH="$(pwd)/src:${PYTHONPATH:-}"
+echo "===== Booting ROMP API via start.sh ====="
 
-# Prefer the Railpack virtualenv so uvicorn, romp, and deps are available
-if [ -d "/app/.venv" ]; then
-  export VIRTUAL_ENV="/app/.venv"
+# 1) Add possible virtualenv locations to PATH so 'romp' CLI is visible
+if [ -d "/app/venv/bin" ]; then
+  echo "Using venv at /app/venv"
+  export PATH="/app/venv/bin:${PATH}"
+fi
+
+if [ -d "/app/.venv/bin" ]; then
+  echo "Using venv at /app/.venv"
   export PATH="/app/.venv/bin:${PATH}"
 fi
 
-# Optionally force ROMP binary location for the service resolver
-export ROMP_COMMAND="${ROMP_COMMAND:-/app/.venv/bin/romp}"
+echo "PATH is: $PATH"
 
-# Start the API
-exec python -m uvicorn romp_pipeline.api.main:app --host "${HOST}" --port "${PORT}"
+# 2) Make sure the src/ directory is importable as a package
+export PYTHONPATH="$(pwd)/src:${PYTHONPATH:-}"
+echo "PYTHONPATH is: $PYTHONPATH"
+
+echo "Starting up ROMP API (uvicorn)..."
+
+# 3) Run the FastAPI app
+exec python -m uvicorn romp_pipeline.api.main:app --host "$HOST" --port "$PORT"
