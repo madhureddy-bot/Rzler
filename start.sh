@@ -1,31 +1,31 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+echo "===== Booting ROMP API via start.sh ====="
+
 HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-8000}"
 
-echo "===== Booting ROMP API via start.sh ====="
-
-# 1) Add possible virtualenv locations to PATH so 'python' and other tools come from venv
-if [ -d "/app/venv/bin" ]; then
-  echo "Using venv at /app/venv"
-  export PATH="/app/venv/bin:${PATH}"
-fi
-
-if [ -d "/app/.venv/bin" ]; then
-  echo "Using venv at /app/.venv"
-  export PATH="/app/.venv/bin:${PATH}"
-fi
-
-# 2) Put the app root on PATH so our custom ./romp script is visible
-export PATH="/app:${PATH}"
-
-echo "PATH is: $PATH"
-
-# 3) Keep src on PYTHONPATH for imports
 export PYTHONPATH="$(pwd)/src:${PYTHONPATH:-}"
-echo "PYTHONPATH is: $PYTHONPATH"
+
+if [ -d "/app/.venv" ]; then
+  echo "Using venv at /app/.venv"
+  export VIRTUAL_ENV="/app/.venv"
+  export PATH="/app/.venv/bin:${PATH}"
+else
+  echo "WARN: /app/.venv not found"
+fi
+
+export ROMP_COMMAND="${ROMP_COMMAND:-/app/.venv/bin/romp}"
+
+echo "PATH is: ${PATH}"
+echo "PYTHONPATH is: ${PYTHONPATH}"
+echo "ROMP_COMMAND is: ${ROMP_COMMAND}"
+
+if [ ! -x "${ROMP_COMMAND}" ]; then
+  echo "ERROR: ROMP binary not found at ${ROMP_COMMAND}"
+  ls -l /app/.venv/bin || true
+fi
 
 echo "Starting up ROMP API (uvicorn)..."
-
-exec python -m uvicorn romp_pipeline.api.main:app --host "$HOST" --port "$PORT"
+exec /app/.venv/bin/python -m uvicorn romp_pipeline.api.main:app --host "${HOST}" --port "${PORT}"
