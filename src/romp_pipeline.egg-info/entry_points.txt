@@ -1,3 +1,0 @@
-[console_scripts]
-romp-api = romp_pipeline.api.main:run_server
-romp-pipeline = romp_pipeline.cli.pipeline:main
