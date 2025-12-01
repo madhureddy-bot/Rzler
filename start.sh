@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -e
 
-HOST="${HOST:-0.0.0.0}"
-PORT="${PORT:-8000}"
+# Make sure venv binaries (romp, romp-api, uvicorn, etc.) are on PATH
+export PATH="/app/.venv/bin:$PATH"
 
-# Ensure the src package path is importable without pip-installing the project
-export PYTHONPATH="$(pwd)/src:${PYTHONPATH:-}"
-
-exec python -m uvicorn romp_pipeline.api.main:app --host "$HOST" --port "$PORT"
-
+# romp-api is the console script from [project.scripts] in pyproject.toml
+exec romp-api
