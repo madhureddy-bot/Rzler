@@ -1,3 +1,6 @@
+ls -l /app/.venv/bin/romp || true
+/app/.venv/bin/python -c "import shutil, sys; print(sys.executable); print(shutil.which('romp'))"
+
 #!/usr/bin/env bash
 set -euo pipefail
 
