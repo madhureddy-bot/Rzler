@@ -1,31 +1,87 @@
 import os
 import subprocess
+import sys
+import sysconfig
 from pathlib import Path
 from logging import Logger
-from typing import Optional
+from shutil import which
+from typing import List, Optional
 
 from romp_pipeline.api.config import settings
 from romp_pipeline.api.exceptions import ROMPProcessingError, ROMPNotAvailableError
 
 class ROMPService:
     """Service for running ROMP inference"""
-    
-    _available: Optional[bool] = None
-    
+
+    def __init__(self) -> None:
+        self._available: Optional[bool] = None
+        self._romp_command: Optional[List[str]] = None
+
+    def _resolve_command_path(self) -> Optional[List[str]]:
+        """
+        Locate the ROMP executable even when it isn't on PATH.
+        Falls back to python -m romp/simple_romp if a console script is missing.
+        """
+        if self._romp_command:
+            head = self._romp_command[0]
+            if Path(head).exists():
+                return self._romp_command
+
+        candidates = []
+
+        env_cmd = os.environ.get("ROMP_COMMAND")
+        if env_cmd:
+            expanded = Path(env_cmd).expanduser()
+            if expanded.exists():
+                candidates.append(expanded)
+            else:
+                resolved_env = which(env_cmd)
+                if resolved_env:
+                    candidates.append(Path(resolved_env))
+
+        which_cmd = which("romp")
+        if which_cmd:
+            candidates.append(Path(which_cmd))
+
+        scripts_dir = sysconfig.get_path("scripts")
+        if scripts_dir:
+            candidates.append(Path(scripts_dir) / "romp")
+
+            candidates.append(Path(sys.executable).with_name("romp"))
+
+        for candidate in candidates:
+            if candidate.exists():
+                self._romp_command = [str(candidate)]
+                return self._romp_command
+
+        # No CLI shim detected; try module invocation as a fallback
+        for module_name in ("romp", "simple_romp"):
+            try:
+                __import__(module_name)
+                self._romp_command = [sys.executable, "-m", module_name]
+                return self._romp_command
+            except ImportError:
+                continue
+
+        self._romp_command = None
+        return None
+
     def check_availability(self) -> bool:
         """Check if ROMP command is available (cached)"""
         if self._available is not None:
             return self._available
-            
-        try:
-            result = subprocess.run(['romp', '--help'], 
-                                  capture_output=True, 
-                                  timeout=5)
-            self._available = result.returncode == 0
-        except (subprocess.TimeoutExpired, FileNotFoundError):
+
+        command = self._resolve_command_path()
+        if not command:
             self._available = False
-            
-        return self._available
+            return False
+
+        if not os.access(command[0], os.X_OK):
+            self._available = False
+            return False
+
+        self._available = True
+        return True
 
     def run_inference(self, image_path: Path, output_dir: Path, logger: Logger) -> Path:
         """
@@ -41,9 +97,12 @@ class ROMPService:
         """
         if not self.check_availability():
             raise ROMPNotAvailableError()
-            
-        romp_cmd = [
-            "romp",
+
+        command = self._resolve_command_path()
+        if not command:
+            raise ROMPNotAvailableError()
+
+        romp_cmd = command + [
             "--mode=image",
             "--calc_smpl",
             "--render_mesh",  # Required for verts generation
