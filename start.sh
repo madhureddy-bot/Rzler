@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-# Make sure venv binaries (romp, romp-api, uvicorn, etc.) are on PATH
-export PATH="/app/.venv/bin:$PATH"
+HOST="${HOST:-0.0.0.0}"
+PORT="${PORT:-8000}"
 
-# romp-api is the console script from [project.scripts] in pyproject.toml
-exec romp-api
+# Make sure Railpack's venv scripts (including `romp`) are discoverable
+if [ -d "/app/.venv/bin" ]; then
+  export PATH="/app/.venv/bin:${PATH}"
+fi
+
+# Ensure the src package path is importable without pip-installing the project
+export PYTHONPATH="$(pwd)/src:${PYTHONPATH:-}"
+
+exec python -m uvicorn romp_pipeline.api.main:app --host "$HOST" --port "$PORT"
