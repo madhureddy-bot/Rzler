@@ -6,22 +6,6 @@ echo "===== Booting ROMP API via start.sh ====="
 HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-8000}"
 
-# Install OpenCV runtime libraries if they’re missing
-need_pkg=false
-for pkg in libgl1 libglib2.0-0; do
-  if ! dpkg -s "${pkg}" >/dev/null 2>&1; then
-    need_pkg=true
-    break
-  fi
-done
-
-if [ "${need_pkg}" = true ]; then
-  echo "Installing libgl1/libglib2.0-0 for OpenCV..."
-  apt-get update -y
-  apt-get install -y --no-install-recommends libgl1 libglib2.0-0
-  rm -rf /var/lib/apt/lists/*
-fi
-
 # Ensure src is importable without pip install
 export PYTHONPATH="$(pwd)/src:${PYTHONPATH:-}"
 
@@ -34,19 +18,51 @@ else
   echo "WARN: /app/.venv not found"
 fi
 
+# Install OpenCV runtime libraries if missing (needed for cv2)
+if command -v apt-get >/dev/null 2>&1; then
+  need_pkg=false
+  for pkg in libgl1 libglib2.0-0; do
+    if ! dpkg -s "${pkg}" >/dev/null 2>&1; then
+      need_pkg=true
+      break
+    fi
+  done
+  if [ "${need_pkg}" = true ]; then
+    echo "Installing libgl1/libglib2.0-0..."
+    apt-get update -y
+    apt-get install -y --no-install-recommends libgl1 libglib2.0-0
+    rm -rf /var/lib/apt/lists/*
+  fi
+fi
+
 # Tell the service where to find ROMP
 export ROMP_COMMAND="${ROMP_COMMAND:-/app/.venv/bin/romp}"
 
-# Prepare ROMP models if they’re missing (/root/.romp by default)
+# Ensure ROMP model cache exists
 ROMP_CACHE_DIR="${HOME}/.romp"
 if [ ! -f "${ROMP_CACHE_DIR}/SMPL_NEUTRAL.pth" ]; then
   echo "Preparing ROMP models..."
-  /app/.venv/bin/python -m romp.prepare_models --models smpl
+  mkdir -p "${ROMP_CACHE_DIR}"
+  if ! /app/.venv/bin/python -m simple_romp.prepare_models --models smpl; then
+    if ! /app/.venv/bin/python -m romp.prepare_models --models smpl; then
+      if command -v romp.prepare_smpl >/dev/null 2>&1; then
+        romp.prepare_smpl || true
+      else
+        echo "please prepare SMPL model files following instructions at https://github.com/Arthur151/ROMP/blob/master/simple_romp/README.md#installation"
+      fi
+    fi
+  fi
 fi
 
 echo "PATH is: ${PATH}"
 echo "PYTHONPATH is: ${PYTHONPATH}"
 echo "ROMP_COMMAND is: ${ROMP_COMMAND}"
+
+# Preflight: confirm romp exists and is executable
+if [ ! -x "${ROMP_COMMAND}" ]; then
+  echo "ERROR: ROMP binary not found at ${ROMP_COMMAND}"
+  ls -l /app/.venv/bin || true
+fi
 
 echo "Starting up ROMP API (uvicorn)..."
 exec /app/.venv/bin/python -m uvicorn romp_pipeline.api.main:app --host "${HOST}" --port "${PORT}"
