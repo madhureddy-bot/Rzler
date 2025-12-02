@@ -40,18 +40,11 @@ export ROMP_COMMAND="${ROMP_COMMAND:-/app/.venv/bin/romp}"
 
 # Ensure ROMP model cache exists
 ROMP_CACHE_DIR="${HOME}/.romp"
+SMPL_SRC="/app/data/smpl_models/smpl"
 if [ ! -f "${ROMP_CACHE_DIR}/SMPL_NEUTRAL.pth" ]; then
   echo "Preparing ROMP models..."
   mkdir -p "${ROMP_CACHE_DIR}"
-  if ! /app/.venv/bin/python -m simple_romp.prepare_models --models smpl; then
-    if ! /app/.venv/bin/python -m romp.prepare_models --models smpl; then
-      if command -v romp.prepare_smpl >/dev/null 2>&1; then
-        romp.prepare_smpl || true
-      else
-        echo "please prepare SMPL model files following instructions at https://github.com/Arthur151/ROMP/blob/master/simple_romp/README.md#installation"
-      fi
-    fi
-  fi
+  /app/.venv/bin/python -m simple_romp.prepare_models --models smpl --model-dir "${SMPL_SRC}" || true
 fi
 
 echo "PATH is: ${PATH}"
